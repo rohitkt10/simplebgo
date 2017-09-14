@@ -20,3 +20,6 @@ The BayesianOptimizer class can be called using:
 from simplebgo import BayesianOptimizer
 ```
 
+## Python notebook to demonstrate optimization of 1D noisy function:
+https://github.com/rohitkt10/notebooks
+
