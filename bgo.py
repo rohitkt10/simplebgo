@@ -53,6 +53,7 @@ class BayesianOptimizer(object):
         self.verbose = verbose
         self.plot = plot
         self.resultdir = resultdir
+        self.current_file_path =  os.path.join(os.path.dirname(os.path.realpath(__file__)), 'bgo.py')
         if not os.path.exists(self.resultdir):
             os.makedirs(self.resultdir)
 
@@ -122,7 +123,6 @@ class BayesianOptimizer(object):
             self.augment_data(x_next, y_next)
             self.optimize_gp()
             self.mean = self.model.predict(x_next)[0]
-            #self.fxmean, self.fxvar = self.model.predict(self.Xinit)
             self.fxopt = self.mean[0, 0]
             self.xopt = x_next[0]
             self.ei_history.append(ei_max)
@@ -132,19 +132,22 @@ class BayesianOptimizer(object):
                 print "-"*40
                 print self.model
             if self.plot:
-                self.make_plot(i, ei_grid)
+                self.make_plot(i)
 
     
-    def make_plot(self, i, ei_grid):
-        x = self.grid
-        yp, yv = self.model.predict(x)
-        ysd = np.sqrt(yv)[:, 0]
-
+    def make_plot(self, i):
         #plot if one dimensional input
         if self.dim == 1:
+            x = np.linspace(self.bounds[0][0], self.bounds[0][1], 200)
+            yp, yv = self.model.predict(x[:, None])
+            ysd =  np.sqrt(yv)
+            yp = yp[:, 0]
+            ysd = ysd[:, 0]
+            z = np.array([self.ei(grid_loc) for grid_loc in x])
+
             #plot the current state of the GP surrogate and the current max. 
-            plt.plot(x[:, 0], yp[:, 0], linewidth=3, label='GP surrogate mean')
-            plt.fill_between(x[:, 0], yp[:, 0] - 2*ysd, yp[:, 0] + 2*ysd, color='blue', alpha=0.2)
+            plt.plot(x, yp, linewidth=3, label='GP surrogate mean')
+            plt.fill_between(x, yp - 2*ysd, yp + 2*ysd, color='blue', alpha=0.2)
             plt.plot(self.xopt[0], self.fxopt, marker = 'D', color = 'red')
             plt.legend(loc='best')
             figname = 'bgo_opt_iter_'+str(i+1)+'.pdf'
@@ -152,12 +155,12 @@ class BayesianOptimizer(object):
             plt.close()
 
             #plot the EI func. 
-            plt.plot(self.grid[:, 0], ei_grid, 'o')
+            
+            plt.plot(x, z, 'o')
             figname = 'ei_grid_iter_'+str(i+1)+'.pdf'
             plt.savefig(os.path.join(self.resultdir, figname))
             plt.close()
-
-
+            
         #plot if 2D input.
         if self.dim == 2:
             x1 = np.linspace(self.bounds[0][0], self.bounds[0][1], 200)
@@ -174,7 +177,6 @@ class BayesianOptimizer(object):
             #plt.scatter([self.xopt[0]], [self.xopt[1]], 'D', label='current optimum')
             #plt.legend(loc='best')
             plt.savefig(os.path.join(self.resultdir, 'bgo_opt_iter_'+str(i+1)+'.pdf'))
-
             plt.close()
 
             #contour plot of AF 
