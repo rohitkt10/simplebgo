@@ -4,6 +4,7 @@ from pdb import set_trace as keyboard
 import matplotlib.pyplot as plt 
 import seaborn as sns
 sns.set_context('paper')
+sns.set_context(rc={'lines.markeredgewidth': 1.5})
 import GPy
 from design import latin_center
 from GPy.kern import RBF
@@ -114,6 +115,7 @@ class BayesianOptimizer(object):
     def optimize(self):
         #loop over the maximum number of iterations. 
         for i in xrange(self.maxiter):
+            #self.optimize_one_step()
             print "BGO Iteration : "+str(i+1)
             ei_grid = np.array([self.ei(grid_loc[None, :]) for grid_loc in self.grid])
             idx = np.argmax(ei_grid)
@@ -149,13 +151,13 @@ class BayesianOptimizer(object):
             plt.plot(x, yp, linewidth=3, label='GP surrogate mean')
             plt.fill_between(x, yp - 2*ysd, yp + 2*ysd, color='blue', alpha=0.2)
             plt.plot(self.xopt[0], self.fxopt, marker = 'D', color = 'red')
+            plt.plot(self.Xinit[:, 0], self.Yinit[:, 0], 'x', markersize = 10, color='black', label='data')
             plt.legend(loc='best')
             figname = 'bgo_opt_iter_'+str(i+1)+'.pdf'
             plt.savefig(os.path.join(self.resultdir, figname))
             plt.close()
 
             #plot the EI func. 
-            
             plt.plot(x, z, 'o')
             figname = 'ei_grid_iter_'+str(i+1)+'.pdf'
             plt.savefig(os.path.join(self.resultdir, figname))
@@ -189,8 +191,7 @@ class BayesianOptimizer(object):
             plt.close()
 
         if self.dim > 2:
-            print "Cannot visualize > 2 dimensions.ZZ"
-
+            print "Cannot visualize > 2 dimensions."
 
     # generate initial design
     def generate_initial_design(self, n):
@@ -218,7 +219,7 @@ if __name__ == '__main__':
         return true 
 
     def func(x):
-        var = 0.001  #at var = 0.2, this optimization breaks down. 
+        var = 0.01  #at var = 0.2, this optimization breaks down. 
         sd = np.sqrt(var)
         return true_func(x) + sd*np.random.randn()
 
@@ -257,8 +258,9 @@ if __name__ == '__main__':
     fxopt_ref = res['fun']
     
     #define the optimization problem 
-    kernel = GPy.kern.RBF(2, ARD=True)
-    optimizer = BayesianOptimizer(objfunc = f, 
+    kernel = GPy.kern.RBF(1, ARD=True)
+    bounds = [[-10, 10]]
+    optimizer = BayesianOptimizer(objfunc = func, 
                                   bounds = bounds, 
                                   kernel = kernel,
                                   num_init = 20,
