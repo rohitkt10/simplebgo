@@ -91,11 +91,18 @@ class BayesianOptimizer(object):
                 x = x[:, None]
 
         mu, sigma2 = self.model.predict(x)   #this predicts the mean and variance at x based on current GP 
-        sigma = np.sqrt(sigma2)              
-        Z = (mu[0, 0] - self.fxopt) / sigma[0, 0]
+        tmp1 = sigma2[0, 0] - self.model.likelihood.variance[0]
+        tmp2 = m[0, 0] - self.fxopt #<--  improvement. If the improvement is < 0, this  function should return 0. 
+        if tmp1 <= 0:
+            if tmp2 <= 0:
+                return 0. 
+            return tmp2
+
+        sigma = np.sqrt(tmp1)              
+        Z = (tmp2) / sigma
         pdf = norm.pdf(Z)
         cdf = norm.cdf(Z)
-        return ((mu[0, 0]-self.fxopt)*cdf + sigma*pdf)[0, 0]
+        return (tmp2*cdf + sigma*pdf)
 
     def augment_data(self, x, y):
         """
@@ -115,7 +122,6 @@ class BayesianOptimizer(object):
     def optimize(self):
         #loop over the maximum number of iterations. 
         for i in xrange(self.maxiter):
-            #self.optimize_one_step()
             print "BGO Iteration : "+str(i+1)
             ei_grid = np.array([self.ei(grid_loc[None, :]) for grid_loc in self.grid])
             idx = np.argmax(ei_grid)
@@ -124,9 +130,10 @@ class BayesianOptimizer(object):
             y_next = np.atleast_2d(self.objfunc(x_next[0]))
             self.augment_data(x_next, y_next)
             self.optimize_gp()
-            self.mean = self.model.predict(x_next)[0]
-            self.fxopt = self.mean[0, 0]
-            self.xopt = x_next[0]
+            self.mean = self.model.predict(self.Xinit)[0]
+            opt_idx = np.where(self.mean[:, 0] == np.max(self.mean[:, 0]))[0][0]
+            self.xopt = self.Xinit[opt_idx]
+            self.fxopt = self.mean[opt_idx, 0]
             self.ei_history.append(ei_max)
             if self.verbose:
                 print "-"*40
